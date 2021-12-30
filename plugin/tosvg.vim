@@ -14,9 +14,12 @@ let g:to_svg_line_spacing=1.1
 " 0 means to insert spaces, which should align nicely
 let g:to_svg_char_spacing=0 
 
+let g:to_svg_font_size=12
+
+let g:to_svg_background='transparent'
 
 if !&cp && !exists(":TOSvg") && has("user_commands")
-    command -range=% -bar TOSvg :call Convert2SVG(<line1>, <line2>)
+    command -range=% -nargs=? -bar TOSvg :call Convert2SVG(<line1>, <line2>, '<args>')
 endif
 
 function! TOSvgStyle(id, attr, name)
@@ -24,26 +27,35 @@ function! TOSvgStyle(id, attr, name)
     return (val == v:null) ? '' : (' ' . a:name . ': ' . val . ';')
 endfunction
 
-function! Convert2SVG(l1, l2)
+function! Convert2SVG(l1, l2, fn)
     let pre_style_data = []
     let data = []
     let l = a:l1
     let vert_pos = 1
     let styles = {}
+    let max_width = 0
 
     call add(pre_style_data, '<?xml version="1.0" standalone="no"?>')
     call add(pre_style_data, '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">')
-    call add(pre_style_data, '<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">')
+    let svg_index = len(pre_style_data)
+    call add(pre_style_data, '<svg>') " gets replaced
 
     call add(pre_style_data, '<style type="text/css">')
-    call add(pre_style_data, ".body { color: black; background-color: white; font-family: monospace; white-space: pre; }")
+    call add(pre_style_data, printf(".body { color: black; font-family: monospace; font-size: %dpx; white-space: pre; }", g:to_svg_font_size))
+    call add(pre_style_data, printf(".body > rect { color: none; fill: %s }", g:to_svg_background))
     call add(data, '</style>')
     call add(data, '<g class="body">')
+    call add(data, '<rect x="0" y="0" width="100%" height="100%"/>')
 
     while l <= a:l2
 
         let line = getline(l)
-        let max_col = 200
+        let max_col = col([l,'$'])
+
+        if max_col > max_width
+            let max_width = max_col
+        endif
+
         let old_syn = -1
 
         let svg_text = [ printf('<text y="%.2fem" data-row="%d">', vert_pos*g:to_svg_line_spacing, l)]
@@ -69,10 +81,10 @@ function! Convert2SVG(l1, l2)
                 call add(svg_text, '</tspan>')
             endif
 
-            if new_syn == 0
-                " EOL
-                break
-            endif
+            "if new_syn == 0
+            "    " EOL
+            "    break
+            "endif
 
             if syn_different || spaces
                 let old_syn = new_syn
@@ -101,7 +113,7 @@ function! Convert2SVG(l1, l2)
             let col = col + 1
         endwhile
 
-        if col == max_col
+        if len(svg_text) > 1
             call add(svg_text, '</tspan>')
         endif
 
@@ -124,7 +136,20 @@ function! Convert2SVG(l1, l2)
     call add(data, '</g>')
     call add(data, '</svg>')
 
-    :execute ':new /tmp/' . expand('%:t') . '.' . localtime() . '.svg'
+    let w_px = max_width * g:to_svg_font_size * 0.75
+    let h_px = l * g:to_svg_font_size * g:to_svg_line_spacing
+    let pre_style_data[svg_index] = printf('<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewbox="0 0 %.0f %.0f">', w_px, h_px)
+
+    let a_fn = trim(expand(a:fn)) " Expand so that '%:r' works
+    let ffn = ((a_fn > "") ? a_fn : expand('%:r') . '.' . localtime()) . '.svg'
+
+    let win_id = bufwinid(ffn) 
+    if win_id == -1
+        execute ':new ' . ffn
+    else
+        call win_gotoid(win_id)
+    endif
+    call deletebufline('', 1, '$')
     call append(0, extend(extend(pre_style_data, style_text), data))
 endfunction
 
