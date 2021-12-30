@@ -25,33 +25,23 @@ function! TOSvgStyle(id, attr, name)
 endfunction
 
 function! Convert2SVG(l1, l2)
-    let pre_style_data = []
-    let data = []
     let l = a:l1
     let vert_pos = 1
-    let styles = {}
-
-    call add(pre_style_data, '<?xml version="1.0" standalone="no"?>')
-    call add(pre_style_data, '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">')
-    call add(pre_style_data, '<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">')
-
-    call add(pre_style_data, '<style type="text/css">')
-    call add(pre_style_data, ".body { color: black; background-color: white; font-family: monospace; white-space: pre; }")
-    call add(data, '</style>')
-    call add(data, '<g class="body">')
+    let syn_ids = {}
+    let svg_texts = []
+    let height = a:l2 - a:l1
+    let width = 200
 
     while l <= a:l2
-
         let line = getline(l)
-        let max_col = 200
         let old_syn = -1
 
-        let svg_text = [ printf('<text y="%.2fem" data-row="%d">', vert_pos*g:to_svg_line_spacing, l)]
+        let text = [ printf('<text y="%.2fem" data-row="%d">', vert_pos*g:to_svg_line_spacing, l)]
         let vert_pos = vert_pos + 1
 
         let col = 1
         let spaces = 0
-        while col < max_col
+        while col < width
             let new_syn = synIDtrans(synID(l, col, 1))
             let byte_pos = col([l, col-1])
             let c_char = line[byte_pos]
@@ -66,7 +56,7 @@ function! Convert2SVG(l1, l2)
 
             " virtcol()
             if old_syn >= 0 && (syn_different || spaces)
-                call add(svg_text, '</tspan>')
+                call add(text, '</tspan>')
             endif
 
             if new_syn == 0
@@ -81,14 +71,14 @@ function! Convert2SVG(l1, l2)
                 if g:to_svg_char_spacing > 0
                     let spc_txt = (spaces > 0) ? printf('dx="%.1fem" ',  spaces * g:to_svg_char_spacing) : ''
                     "data-col="%d" col
-                    call add(svg_text, printf('<tspan %s class="s%d">', spc_txt, new_syn))
+                    call add(text, printf('<tspan %s class="s%d">', spc_txt, new_syn))
                 else
-                    call add(svg_text, printf('<tspan class="s%d">%*s', new_syn, spaces, ""))
+                    call add(text, printf('<tspan class="s%d">%*s', new_syn, spaces, ""))
                 endif
                 let spaces = 0
             endif
 
-            let styles[new_syn] = {}
+            let syn_ids[new_syn] = {}
 
             if c_char == "<"
                 let c_char = "&lt;"
@@ -97,35 +87,52 @@ function! Convert2SVG(l1, l2)
             elseif c_char == "&"
                 let c_char = "&amp;"
             endif
-            call add(svg_text, c_char)
+            call add(text, c_char)
             let col = col + 1
         endwhile
 
-        if col == max_col
-            call add(svg_text, '</tspan>')
+        if col == width
+            call add(text, '</tspan>')
         endif
 
-        call add(svg_text, '</text>')
-        call add(data, join(svg_text, ""))
+        call add(text, '</text>')
+        call add(svg_texts, join(text, ""))
         let l = l + 1
     endwhile
 
-    let style_text = []
-    for id in keys(styles)
-        let style = '.s' . id . ' { '
+    let svg_styles = []
+    for id in keys(syn_ids)
+        let css = '.s' . id . ' { '
 
-        let style = style . TOSvgStyle(id, 'fg', 'fill')
-        "let style = style . TOSvgStyle(id, 'bg', 'background-color')
-        let style = style . '}'
-        let style = style . ' /* ' . synIDattr(id, 'name') . ' */'
-        call add(style_text, style)
+        let fg = TOSvgStyle(id, 'fg', 'fill')
+        if fg != ' fill: ;' && fg != '' && fg != ' fill: none;'
+            let css = css . fg
+        endif
+        let bg = TOSvgStyle(id, 'bg', 'background-color')
+        if bg != ' background-color: ;' && bg != '' && bg != ' background-color: none;'
+            let css = css . bg
+        endif
+        let css = css . '}'
+        let css = css . ' /* ' . synIDattr(id, 'name') . ' */'
+        call add(svg_styles, css)
     endfor
 
-    call add(data, '</g>')
-    call add(data, '</svg>')
+    let fg = synIDattr(hlID("Normal"), "fg")
+    let bg = synIDattr(hlID("Normal"), "bg")
+    let svg = []
+    call add(svg, '<?xml version="1.0" standalone="no"?>')
+    call add(svg, '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">')
+    call add(svg, printf('<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="fill: %s; background-color: %s; font-family: monospace; white-space: pre;" viewBox="0 0 %d %d">', fg, bg, width, height))
+    call add(svg, '<style type="text/css">')
+    let svg = extend(svg, svg_styles)
+    call add(svg, '</style>')
+    call add(svg, '<g class="body">')
+    let svg = extend(svg, svg_texts)
+    call add(svg, '</g>')
+    call add(svg, '</svg>')
 
     :execute ':new /tmp/' . expand('%:t') . '.' . localtime() . '.svg'
-    call append(0, extend(extend(pre_style_data, style_text), data))
+    call append(0, svg)
 endfunction
 
 " vim: sw=4 sts=4 et
