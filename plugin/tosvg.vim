@@ -17,6 +17,7 @@ let g:to_svg_char_spacing=0
 let g:to_svg_font_size=12
 
 let g:to_svg_background='transparent'
+let g:to_svg_font_family='monospace'
 
 if !&cp && !exists(":TOSvg") && has("user_commands")
     command -range=% -nargs=? -bar TOSvg :call Convert2SVG(<line1>, <line2>, '<args>')
@@ -41,7 +42,7 @@ function! Convert2SVG(l1, l2, fn)
     call add(pre_style_data, '<svg>') " gets replaced
 
     call add(pre_style_data, '<style type="text/css">')
-    call add(pre_style_data, printf(".body { color: black; font-family: monospace; font-size: %dpx; white-space: pre; }", g:to_svg_font_size))
+    call add(pre_style_data, printf(".body { color: black; font-family: %s; font-size: %dpx; white-space: pre; }", g:to_svg_font_family, g:to_svg_font_size))
     call add(pre_style_data, printf(".body > rect { color: none; fill: %s }", g:to_svg_background))
     call add(data, '</style>')
     call add(data, '<g class="body">')
