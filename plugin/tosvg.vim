@@ -139,7 +139,7 @@ function! Convert2SVG(l1, l2, fn)
 
     let w_px = max_width * g:to_svg_font_size * 0.75
     let h_px = l * g:to_svg_font_size * g:to_svg_line_spacing
-    let pre_style_data[svg_index] = printf('<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewbox="0 0 %.0f %.0f">', w_px, h_px)
+    let pre_style_data[svg_index] = printf('<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 %.0f %.0f">', w_px, h_px)
 
     let a_fn = trim(expand(a:fn)) " Expand so that '%:r' works
     let ffn = ((a_fn > "") ? a_fn : expand('%:r') . '.' . localtime()) . '.svg'

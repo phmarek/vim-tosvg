@@ -27,7 +27,7 @@ The script includes these settings:
 
 - `g:to_svg_line_spacing` - vertical spacing between lines. `1.0` looks to dense to me, default is `1.1`.
 - `g:to_svg_char_spacing` - when zero, just inserts spaces; with a numeric value, used the SVG `dx` value for horizontal space. \\ The best value depends on the font used, I like `0.8`.
-- `g:to_svg_font_size` - default is `11`, used in the CSS as a pixel size. Also used to calculate the total dimensions of the viewbox.
+- `g:to_svg_font_size` - default is `11`, used in the CSS as a pixel size. Also used to calculate the total dimensions of the `viewBox`.
 - `g:to_svg_background` - default is `transparent`; by setting it to a color, you'll get the SVG's background colored in.
 - `g:to_svg_font_family` - default is `monospace`.
 
