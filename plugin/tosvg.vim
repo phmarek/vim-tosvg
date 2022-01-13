@@ -124,7 +124,7 @@ function! Convert2SVG(l1, l2, fn)
     endwhile
 
     let style_text = []
-    for id in keys(styles)
+    for id in sort(keys(styles))
         let style = '.s' . id . ' { '
 
         let style = style . TOSvgStyle(id, 'fg', 'fill')
